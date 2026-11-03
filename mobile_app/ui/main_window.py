@@ -7,10 +7,11 @@ import threading
 import time
 
 import chess
-from PySide6.QtCore import QEvent, QSettings, Qt, QThread, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QSettings, QSize, Qt, QThread, QTimer, QUrl, Signal
 from PySide6.QtGui import (QAction, QActionGroup, QDesktopServices, QGuiApplication, QIcon, QKeySequence,
                            QShortcut)
-from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QComboBox, QFileDialog, QFrame, QGridLayout,
+                               QHBoxLayout,
                                QInputDialog, QLabel, QMainWindow, QMenu, QMessageBox, QPushButton, QStackedWidget,
                                QTabWidget, QTextBrowser, QVBoxLayout, QWidget)
 
@@ -23,7 +24,7 @@ from game.openings import opening_name
 from game.puzzles import PUZZLES, puzzle_by_id
 from platform_info import IS_MOBILE, IS_PHONE_OS, IS_WINDOWS
 
-from .mobile import Drawer, enable_touch_scroll, fit_dialog
+from .mobile import Drawer, enable_touch_scroll, fit_dialog, menu_icon
 from .menus import (TIME_CONTROLS, HelpDialog, HomeMenu, LessonBrowser, NewGameDialog, PromotionDialog,
                     PuzzleBrowser, SettingsDialog, rank_for)
 from .piece_graphics import PieceRenderer
@@ -40,9 +41,20 @@ DEFAULTS = {
 
 if IS_MOBILE:
     # phones: lighter 3D effects by default (they can be turned on in Settings)
-    DEFAULTS.update({"msaa": False, "bloom": False, "tooltips": False})
+    DEFAULTS.update({"msaa": False, "bloom": False, "tooltips": False, "location": "sky"})
 
 ARMY_NAMES_3D = {chess.WHITE: "Kingdom of Light", chess.BLACK: "Shadow Legion"}
+
+# set by main.py while the splash screen is up: progress_hook(fraction, message)
+progress_hook = None
+
+
+def _progress(fraction: float, message: str):
+    if progress_hook is not None:
+        try:
+            progress_hook(fraction, message)
+        except Exception:
+            pass
 
 
 class Job(QThread):
@@ -111,12 +123,16 @@ class MainWindow(QMainWindow):
         self.board3d = None
         self.board2d = None
         self.board = None
+        _progress(0.3, "Raising the castle walls…")
         self._build_ui()
         self._build_menus()
         self._build_shortcuts()
+        _progress(0.45, "Summoning the armies…" if self.cfg["view_mode"] == "3d" else "Carving the board…")
         self._init_board_view(self.cfg["view_mode"])
+        _progress(0.8, "Tuning the minstrels…")
         self._setup_music()
         self._apply_settings()
+        _progress(0.92, "Lighting the torches…")
         if IS_MOBILE:
             self.menuBar().hide()
             self._show_home_layout()       # so the first layout pass already fits a phone
@@ -295,6 +311,7 @@ class MainWindow(QMainWindow):
         self.m_home = QPushButton("🏰 Main menu")
         self.m_home.clicked.connect(self.go_home)
         if IS_MOBILE:   # one row of buttons; Main menu is in ☰ and on the Back button
+            self.m_retry.setText("🔁 Retry")
             for i, b in enumerate((self.m_hint, self.m_retry, self.m_list, self.m_next)):
                 b.setObjectName("bar" if b is not self.m_next else "primary")
                 row.addWidget(b, 0, i)
@@ -313,8 +330,11 @@ class MainWindow(QMainWindow):
         mb = QHBoxLayout(self.mobile_bar)
         mb.setContentsMargins(0, 0, 0, 0)
         mb.setSpacing(6)
-        self.burger = QPushButton("☰")
+        self.burger = QPushButton()
         self.burger.setObjectName("burger")
+        self.burger.setIcon(menu_icon())
+        self.burger.setIconSize(QSize(24, 24))
+        self.burger.setMinimumWidth(44)
         self.burger.clicked.connect(self.open_drawer)
         mb.addWidget(self.burger)
         self.mobile_title = QLabel(APP_TITLE)
@@ -336,11 +356,11 @@ class MainWindow(QMainWindow):
         self.a_hint = QPushButton("💡 Hint")
         self.a_hint.setObjectName("primary")
         self.a_hint.clicked.connect(self.hint)
-        self.a_undo = QPushButton("↶ Undo")
+        self.a_undo = QPushButton("↩️ Undo")
         self.a_undo.clicked.connect(self.undo)
-        self.a_redo = QPushButton("↷ Redo")
+        self.a_redo = QPushButton("↪️ Redo")
         self.a_redo.clicked.connect(self.redo)
-        self.a_flip = QPushButton("⇅ Flip")
+        self.a_flip = QPushButton("🔃 Flip")
         self.a_flip.clicked.connect(self.flip)
         for b in (self.a_hint, self.a_undo, self.a_redo, self.a_flip):
             if b is not self.a_hint:
@@ -565,14 +585,19 @@ class MainWindow(QMainWindow):
             self.loc_combo.addItem(loc.name, k)
         self.loc_combo.setCurrentIndex(max(0, self.loc_combo.findData(self.cfg["location"])))
         self.loc_combo.blockSignals(False)
-        try:
-            self.loc_combo.currentIndexChanged.disconnect()
-        except (TypeError, RuntimeError):
-            pass
-        self.loc_combo.currentIndexChanged.connect(lambda _: self._set_cfg("location", self.loc_combo.currentData()))
+        if not getattr(self, "_loc_combo_connected", False):
+            self._loc_combo_connected = True
+            self.loc_combo.currentIndexChanged.connect(
+                lambda _: self._set_cfg("location", self.loc_combo.currentData()))
 
     # ================================================================ board views
     def _init_board_view(self, mode: str):
+        t0 = time.perf_counter()
+        self._init_board_view_inner(mode)
+        if IS_PHONE_OS:      # shows up in the Android log (logcat, tag "python")
+            print(f"[wwc] {mode} board ready in {time.perf_counter() - t0:.2f}s", flush=True)
+
+    def _init_board_view_inner(self, mode: str):
         if mode == "3d" and self.board3d is None:
             try:
                 from scene3d.view3d import Board3D
@@ -1900,12 +1925,12 @@ class MainWindow(QMainWindow):
         if self.board is not self.board3d or self.board3d is None:
             return
         m = QMenu(self)
-        for text, fn in (("♔  Light side", self.board3d.view_white), ("♚  Shadow side", self.board3d.view_black),
-                         ("⬒  Top view", self.board3d.view_top), ("◫  Side view", self.board3d.view_side),
-                         ("⟳  Slow orbit", self.board3d.toggle_orbit)):
+        for text, fn in (("⚪  Light side", self.board3d.view_white), ("⚫  Shadow side", self.board3d.view_black),
+                         ("⬆️  Top view", self.board3d.view_top), ("↔️  Side view", self.board3d.view_side),
+                         ("🔄  Slow orbit", self.board3d.toggle_orbit)):
             m.addAction(text, fn)
         m.addSeparator()
-        m.addAction("▦  Classic 2D board", self._toggle_view_mode)
+        m.addAction("🔲  Classic 2D board", self._toggle_view_mode)
         m.exec(self.cam_btn.mapToGlobal(self.cam_btn.rect().bottomLeft()))
 
     def _choice_page(self, title: str, key: str, options: dict):
@@ -1951,7 +1976,7 @@ class MainWindow(QMainWindow):
                       "2D armies", "style2d", {k: v.name for k, v in ARMY_STYLES.items()})}),
                   ("item", "🎬  Animations", None, {"page": self._choice_page(
                       "Animations", "anim_mode", {"full": "Cinematic battles", "quick": "Quick", "off": "Off"})}),
-                  ("item", "▦  Switch 2D / 3D", self._toggle_view_mode),
+                  ("item", "🔲  Switch 2D / 3D", self._toggle_view_mode),
                   ("item", "Ambient effects", flip("ambient"), toggle("ambient")),
                   ("item", "Camera effects", flip("camera_fx"), toggle("camera_fx")),
                   ("section", "Sound"),
@@ -1986,6 +2011,9 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         et = event.type()
+        if et == QEvent.Type.MouseButtonPress and isinstance(obj, QAbstractButton) and obj.isEnabled() \
+                and self.cfg.get("sfx", True):
+            self.sounds.play("select")
         if et in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) and \
                 event.key() in (Qt.Key.Key_Back, Qt.Key.Key_Escape) and \
                 QApplication.activeModalWidget() is None and QApplication.activePopupWidget() is None:

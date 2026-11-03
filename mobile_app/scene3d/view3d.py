@@ -28,6 +28,10 @@ from .meshes import tube
 
 PIECE_SCALE = 1.12
 
+# phones: lift the lighting so the battlefield doesn't look murky on a small, bright-room screen
+PHONE_EXPOSURE = 1.4 if IS_MOBILE else 1.0
+PHONE_SUN = 1.2 if IS_MOBILE else 1.0
+
 
 def qml_path(name: str) -> str:
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -394,8 +398,9 @@ class Board3D(QObject):
                           ("orbitColor", QColor(loc.orbit)), ("orbitOpacity", loc.orbit_opacity),
                           ("orbitSpeed", loc.orbit_speed), ("fogColor", QColor(loc.fog)),
                           ("fogDensity", loc.fog_density), ("sunColor", QColor(loc.sun_color)),
-                          ("sunBrightness", loc.sun_brightness), ("sunRotation", QVector3D(*loc.sun_rotation)),
-                          ("probeExposure", loc.probe_exposure), ("ambientKind", loc.ambient)):
+                          ("sunBrightness", loc.sun_brightness * PHONE_SUN),
+                          ("sunRotation", QVector3D(*loc.sun_rotation)),
+                          ("probeExposure", loc.probe_exposure * PHONE_EXPOSURE), ("ambientKind", loc.ambient)):
             r.setProperty(prop, val)
         t = self.lib.terrain(loc.key)
         for name in ("rock", "accent", "glow", "orbit", "lake"):

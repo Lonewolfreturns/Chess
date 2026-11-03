@@ -1,7 +1,8 @@
 """Touch-screen helpers: slide-out menu drawer, finger scrolling and phone-sized dialogs."""
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QEvent, QPoint, QPropertyAnimation, Qt, QTimer
+from PySide6.QtCore import QEasingCurve, QEvent, QPoint, QPropertyAnimation, QRectF, Qt, QTimer
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QAbstractScrollArea, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton,
                                QScrollArea, QScroller, QScrollerProperties, QVBoxLayout, QWidget)
 
@@ -31,6 +32,23 @@ def enable_touch_scroll(root: QWidget):
         props.setScrollMetric(QScrollerProperties.ScrollMetric.HorizontalOvershootPolicy, off)
         props.setScrollMetric(QScrollerProperties.ScrollMetric.DragStartDistance, 0.004)
         scroller.setScrollerProperties(props)
+
+
+# ------------------------------------------------------------------ icons
+def menu_icon(size: int = 64, color: str = "#f3d48a") -> QIcon:
+    """Three-bar menu icon, drawn rather than taken from a font (phone fonts lack the ☰ symbol)."""
+    pix = QPixmap(size, size)
+    pix.fill(Qt.GlobalColor.transparent)
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.setPen(Qt.PenStyle.NoPen)
+    p.setBrush(QColor(color))
+    bar = size * 0.12
+    for i in range(3):
+        y = size * (0.22 + 0.25 * i)
+        p.drawRoundedRect(QRectF(size * 0.14, y, size * 0.72, bar), bar / 2, bar / 2)
+    p.end()
+    return QIcon(pix)
 
 
 # ------------------------------------------------------------------ dialogs
@@ -98,7 +116,7 @@ class Drawer(QWidget):
         self.title = QLabel("")
         self.title.setObjectName("mobileTitle")
         head.addWidget(self.title, 1)
-        close = QPushButton("✕")
+        close = QPushButton("✖")
         close.setObjectName("burger")
         close.clicked.connect(self.close_drawer)
         head.addWidget(close)
@@ -191,7 +209,7 @@ class Drawer(QWidget):
             page = opts.get("page")
             label = text
             if checked is not None:
-                label = ("☑  " if checked() else "☐  ") + text
+                label = ("✅  " if checked() else "⬜  ") + text
             if page is not None:
                 label = f"{text}  ›"
             b = QPushButton(label)

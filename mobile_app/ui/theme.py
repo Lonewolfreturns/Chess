@@ -213,9 +213,30 @@ def _BASE_CSS() -> str:
 
 
 def _MOBILE_CSS() -> str:
-    """Bigger touch targets and thin scroll bars for phones and tablets."""
+    """Bigger touch targets, thin scroll bars and a lighter palette for phones and tablets."""
     return f"""
-    QWidget {{ font-size: 14px; }}
+    QWidget {{ font-size: 14px; background: #1c1536; color: #f4efff; }}
+    QLabel, QCheckBox, QRadioButton {{ background: transparent; }}
+    QMainWindow, QDialog {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #2d2160, stop:0.6 #1f1840, stop:1 #2a1838); }}
+    QFrame#panel {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #34286a, stop:1 #241c4a);
+        border: 1px solid #6d58b0; border-radius: 12px; }}
+    QFrame#card {{ background: #2e2460; border: 1px solid #7a64c4; }}
+    QPushButton {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #5a46a0, stop:1 #3a2d72);
+        border: 1px solid #8c74d8; color: #ffffff; }}
+    QPushButton:pressed {{ background: #2a2058; border-color: {GOLD}; }}
+    QPushButton:disabled {{ color: #9a90b8; border-color: #4a3d78; background: #2a2250; }}
+    QPushButton#primary {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffe39a, stop:1 #e0a83e);
+        color: #2a1606; border: 1px solid #fff0c4; }}
+    QPushButton#primary:disabled {{ background: #3a3060; color: #9a90b8; border: 1px solid #4a3d78; }}
+    QListWidget, QTextBrowser, QTableWidget, QPlainTextEdit, QLineEdit {{ background: #241c48;
+        border: 1px solid #5a4896; selection-background-color: #6a52b8; }}
+    QHeaderView::section {{ background: #2e2460; color: #d8ccf4; }}
+    QComboBox, QSpinBox {{ background: #2e2460; border: 1px solid #6d58b0; }}
+    QTabWidget::pane {{ background: #241c4a; border: 1px solid #5a4896; }}
+    QTabBar::tab {{ background: #2e2460; color: #d0c4ee; }}
+    QTabBar::tab:selected {{ background: #4a3a8a; color: {GOLD}; }}
+    QLabel#subtitle {{ color: #d0c4ee; }}
     QPushButton {{ min-height: 30px; padding: 8px 10px; border-radius: 9px; }}
     QPushButton#tool {{ min-height: 30px; font-size: 17px; }}
     QPushButton#bar {{ padding: 6px 4px; font-size: 13px; min-width: 0px; }}
@@ -231,10 +252,11 @@ def _MOBILE_CSS() -> str:
     QScrollBar:vertical {{ width: 4px; margin: 0px; }}
     QScrollBar::handle:vertical {{ background: #4b3b6e; border-radius: 2px; min-height: 30px; }}
     QMenu::item {{ padding: 12px 30px 12px 20px; font-size: 15px; }}
-    QFrame#drawer {{ background: #141020; border-right: 1px solid #3b2f55; }}
+    QFrame#drawer {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2d2160, stop:1 #1c1536);
+        border-right: 1px solid #6d58b0; }}
     QPushButton#drawerItem {{ text-align: left; padding: 12px 16px; font-size: 15px; font-weight: 500;
         background: transparent; border: none; border-radius: 8px; }}
-    QPushButton#drawerItem:pressed {{ background: #2a2140; }}
+    QPushButton#drawerItem:pressed {{ background: #4a3a8a; }}
     QPushButton#drawerItem:disabled {{ color: #5a5370; background: transparent; }}
     QLabel#drawerSection {{ color: {MUTED}; font-size: 12px; font-weight: bold; padding: 12px 16px 2px 16px;
         letter-spacing: 1px; }}

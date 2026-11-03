@@ -34,9 +34,11 @@ def _shade(hex_color: str, factor: float) -> QColor:
 
 
 # =============================================================== background
-def render_background(env: Environment, w: int, h: int) -> QPixmap:
+def render_background(env: Environment, w: int, h: int, dpr: float = 1.0) -> QPixmap:
+    """Scenery behind the 2D board. ``dpr`` > 1 renders extra pixels for sharp high-density screens."""
     w, h = max(64, w), max(64, h)
-    pix = QPixmap(w, h)
+    pix = QPixmap(int(w * dpr), int(h * dpr))
+    pix.setDevicePixelRatio(dpr)
     p = QPainter(pix)
     p.setRenderHint(QPainter.RenderHint.Antialiasing)
     g = QLinearGradient(0, 0, 0, h)

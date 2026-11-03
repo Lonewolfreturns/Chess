@@ -430,7 +430,8 @@ def music_dirs(extra: str | None = None) -> list[str]:
         exe_dir = os.path.dirname(sys.executable)
         dirs += [os.path.join(exe_dir, "music"), os.path.join(os.path.dirname(exe_dir), "music")]
     project = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dirs += [os.path.join(project, "music"), os.path.join(project, "dist", "music")]
+    dirs += [os.path.join(project, "music"), os.path.join(project, "dist", "music"),
+             os.path.join(os.path.dirname(project), "dist", "music")]      # mobile_app/ inside the repo
     from platform_info import data_dir
     dirs.append(os.path.join(data_dir(), "music"))     # phones: the app's own music folder
     return [d for d in dict.fromkeys(dirs) if os.path.isdir(d)]

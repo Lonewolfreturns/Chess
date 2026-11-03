@@ -53,11 +53,26 @@ def main():
     app.setOrganizationName("WizardWarChess")
     _setup_fonts(app)
 
-    from ui.main_window import MainWindow
     from ui.theme import stylesheet
 
     app.setStyleSheet(stylesheet(IS_MOBILE))
-    window = MainWindow()
+    splash = None
+    if "--selftest" not in sys.argv and "--no-splash" not in sys.argv:
+        from ui.splash import Splash
+        splash = Splash()
+        splash.present()
+        splash.step(0.08, "Opening the spellbook…")
+
+    import ui.main_window as main_window
+    if splash is not None:
+        splash.step(0.2, "Forging the battlefield…")
+        main_window.progress_hook = splash.step
+    import time
+    t_start = time.perf_counter()
+    window = main_window.MainWindow()
+    main_window.progress_hook = None
+    if IS_PHONE_OS:
+        print(f"[wwc] main window built in {time.perf_counter() - t_start:.2f}s", flush=True)
     app.applicationStateChanged.connect(window.on_app_state)
     if "--selftest" in sys.argv:
         _selftest(app, window)
@@ -68,6 +83,8 @@ def main():
         window.show()
     else:
         window.showMaximized()
+    if splash is not None:
+        splash.finish(window)
     sys.exit(app.exec())
 
 

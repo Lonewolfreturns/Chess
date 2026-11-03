@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 import random
 import time
 
@@ -11,7 +12,9 @@ from PySide6.QtGui import (QBrush, QColor, QFont, QLinearGradient, QPainter, QPa
                          QPen, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QGraphicsItem, QGraphicsObject, QGraphicsScene, QGraphicsView)
 
-from platform_info import IS_MOBILE
+from platform_info import IS_MOBILE, IS_PHONE_OS
+
+FRAME_MS = 33 if IS_MOBILE else 16      # phones: 30 frames a second is plenty and saves battery
 
 from animations import capture as capture_anim
 from animations import cinematics, movement
@@ -449,7 +452,7 @@ class ChessScene(QGraphicsScene):
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.timeout.connect(self._tick)
-        self._timer.start(16)
+        self._timer.start(FRAME_MS)
         self.set_position(chess.Board())
 
     # ---------------------------------------------------------- appearance
@@ -933,7 +936,7 @@ class ChessScene(QGraphicsScene):
 
     def resume(self):
         self._last = time.perf_counter()
-        self._timer.start(16)
+        self._timer.start(FRAME_MS)
 
     # ---------------------------------------------------------- loop
     def _tick(self):
@@ -976,14 +979,32 @@ class ChessView(QGraphicsView):
         self.setMouseTracking(True)
         self.setMinimumSize(*((150, 150) if IS_MOBILE else (420, 420)))
         self.setStyleSheet("background: transparent; border: none;")
+        if IS_PHONE_OS or os.environ.get("WWC_2D_GPU"):
+            self._use_gpu()
         self._bg: QPixmap | None = None
         self._bg_timer = QTimer(self)
         self._bg_timer.setSingleShot(True)
         self._bg_timer.timeout.connect(self.refresh_background)
 
+    def _use_gpu(self):
+        """Phones: draw the board with the graphics chip. Software drawing at phone pixel density
+        is several times slower and made the 2D board sluggish."""
+        try:
+            from PySide6.QtGui import QSurfaceFormat
+            from PySide6.QtOpenGLWidgets import QOpenGLWidget
+            gl = QOpenGLWidget()
+            fmt = QSurfaceFormat()
+            fmt.setSamples(4)                      # smooth edges
+            gl.setFormat(fmt)
+            self.setViewport(gl)
+        except Exception as exc:                   # keep the normal drawing if OpenGL isn't available
+            print("2D: GPU drawing unavailable:", exc)
+
     def refresh_background(self):
         vp = self.viewport()
-        self._bg = render_background(self.cs.env, vp.width(), vp.height())
+        dpr = max(1.0, vp.devicePixelRatioF())
+        # draw the scenery at the screen's real resolution (sharp on high-density phone screens)
+        self._bg = render_background(self.cs.env, vp.width(), vp.height(), dpr)
         self.viewport().update()
 
     def resizeEvent(self, event):
@@ -996,13 +1017,20 @@ class ChessView(QGraphicsView):
         self.fitInView(self.cs.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
         if self._bg is None:
             self.refresh_background()
+        # fit again once the layout has settled (the stage is often resized right after showing)
+        QTimer.singleShot(0, self._refit)
+        QTimer.singleShot(250, self._refit)
+
+    def _refit(self):
+        self.fitInView(self.cs.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+        self._bg_timer.start(30)
 
     def drawBackground(self, painter: QPainter, rect: QRectF):
         painter.save()
         painter.resetTransform()
         vp = self.viewport().rect()
         if self._bg is not None:
-            painter.drawPixmap(vp, self._bg, QRectF(self._bg.rect()).toRect())
+            painter.drawPixmap(vp, self._bg)
         else:
             painter.fillRect(vp, QColor(self.cs.env.bg_bottom))
         painter.restore()

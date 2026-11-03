@@ -19,6 +19,20 @@ sleep 20; check "after 20s";  adb exec-out screencap -p > emu_out/01_after_20s.p
 sleep 40; check "after 60s";  adb exec-out screencap -p > emu_out/02_after_60s.png
 sleep 40; check "after 100s"; adb exec-out screencap -p > emu_out/03_after_100s.png
 
+# open the 2D board (the "2D" button, top right), then back to 3D
+tap() { adb shell input tap "$1" "$2"; }
+W=$(adb shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1/p' | tail -1); W=${W:-1080}
+H=$(adb shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\2/p' | tail -1); H=${H:-2400}
+tap $((W * 77 / 100)) $((H * 8 / 100)); sleep 25
+check "2D board"; adb exec-out screencap -p > emu_out/06_board_2d.png
+tap $((W * 77 / 100)) $((H * 8 / 100)); sleep 15
+check "back to 3D"; adb exec-out screencap -p > emu_out/07_back_to_3d.png
+# start a battle: "Battle AI" on the main menu, then Enter accepts the New Battle dialog
+tap $((W * 27 / 100)) $((H * 72 / 100)); sleep 8
+adb exec-out screencap -p > emu_out/08_new_battle_dialog.png
+adb shell input keyevent 66; sleep 25
+check "battle"; adb exec-out screencap -p > emu_out/09_battle.png
+
 # turn the phone sideways and back
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
