@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+# Windows build output
+build/
+dist/
+# Android build output (pyside6-android-deploy / buildozer)
+.buildozer/
+buildozer.spec
+deployment/
+bin/
+*.apk
+*.aab
+# test output
+smoke_out/
+selftest.txt
+selftest.png
+_touch_cache/
