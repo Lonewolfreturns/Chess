@@ -29,8 +29,10 @@ qml_files =
 
 excluded_qml_plugins =
 
-# Found automatically from the Python and QML imports (QtQuick3D, QtMultimedia, QtQuickWidgets, ...)
-modules =
+# Qt libraries, in the order Android loads them. Core MUST come first: other Qt libraries need it
+# to be set up when they start (if the deploy tool picks the order itself it can put Quick before
+# Core, and the app crashes on launch). Each one comes after the libraries it depends on.
+modules = Core,Gui,Network,OpenGL,Concurrent,Qml,Quick,Quick3D,Multimedia,Widgets,QuickWidgets
 
 plugins =
 
