@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Install the APK on the running emulator, start it, and collect screenshots + logs in emu_out/.
+# A summary (is it running? Python errors? crash lines) is also printed to the job log.
 set -x
 APK=$(ls "$1"/*.apk | head -1)
 mkdir -p emu_out
@@ -11,24 +12,31 @@ ls -la "$APK" >> emu_out/info.txt
 adb install -r "$APK" 2>&1 | tee -a emu_out/info.txt
 adb logcat -c
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1
-sleep 60
-adb exec-out screencap -p > emu_out/01_after_60s.png
-sleep 40
-adb exec-out screencap -p > emu_out/02_after_100s.png
+check() {   # $1 = label: is the app still running?
+  if adb shell pidof "$PKG" >/dev/null 2>&1; then echo "$1: RUNNING"; else echo "$1: NOT RUNNING"; fi | tee -a emu_out/status.txt
+}
+sleep 20; check "after 20s";  adb exec-out screencap -p > emu_out/01_after_20s.png
+sleep 40; check "after 60s";  adb exec-out screencap -p > emu_out/02_after_60s.png
+sleep 40; check "after 100s"; adb exec-out screencap -p > emu_out/03_after_100s.png
 
 # turn the phone sideways and back
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1
-sleep 15
-adb exec-out screencap -p > emu_out/03_landscape.png
+sleep 15; check "landscape"; adb exec-out screencap -p > emu_out/04_landscape.png
 adb shell settings put system user_rotation 0
-sleep 10
-adb exec-out screencap -p > emu_out/04_portrait_again.png
+sleep 10; check "portrait again"; adb exec-out screencap -p > emu_out/05_portrait_again.png
 
-# Back button at the main menu should leave the app running in the background, not crash it
-(adb shell pidof "$PKG" || echo "NOT RUNNING") > emu_out/pid.txt
 adb shell run-as "$PKG" cat files/error.log > emu_out/error.log 2>&1 || true
 adb shell run-as "$PKG" ls -la files > emu_out/files.txt 2>&1 || true
 adb logcat -d > emu_out/logcat.txt
-grep -iE "python|qt|traceback|error|fatal|WizardWar" emu_out/logcat.txt | tail -300 > emu_out/logcat_filtered.txt || true
+set +x
+echo "================ SUMMARY ================"
+cat emu_out/status.txt
+echo "---------------- error.log (Python errors saved by the game) ----------------"
+head -c 6000 emu_out/error.log
+echo
+echo "---------------- crash / Python lines from logcat ----------------"
+grep -E "FATAL|AndroidRuntime|Traceback|Error|Exception|python|libc *:|DEBUG *:|qt\.|Qt |QML|qml|ActivityManager.*(Process|died|$PKG)" emu_out/logcat.txt \
+  | grep -vE "ConnectivityService|GoogleApiManager|chatty|Finsky|gms" | tail -250
+echo "========================================="
 exit 0

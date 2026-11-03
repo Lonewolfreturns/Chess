@@ -41,6 +41,9 @@ def _setup_fonts(app):
 def main():
     sys.excepthook = _log_exception
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
+    if IS_ANDROID:
+        # sound/music through Android's own media player (the app ships without FFmpeg)
+        os.environ.setdefault("QT_MEDIA_BACKEND", "android")
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication
 

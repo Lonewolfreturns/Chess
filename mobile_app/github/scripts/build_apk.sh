@@ -23,6 +23,31 @@ python -m pip install -q --upgrade pip
 python -m pip install -q "PySide6==${PYSIDE_VERSION}" jinja2 pkginfo tqdm "packaging==24.1" markupsafe \
   "buildozer==1.6.0" "cython==0.29.33" setuptools wheel
 
+echo "== Patching the deploy tool: load Qt Core first on Android"
+# pyside6-android-deploy 6.12 rebuilds the Qt module list as an unordered set (it ignores the
+# order in pysidedeploy.spec). Android loads the libraries in that order, and if e.g. Quick
+# starts before Core the app crashes at launch. Put the modules in dependency order instead.
+python - <<'PY'
+import pathlib
+import PySide6
+p = pathlib.Path(PySide6.__file__).parent / "scripts" / "deploy_lib" / "android" / "android_config.py"
+s = p.read_text()
+old = "self.modules = list(set(modls))"
+order = ["Core", "Gui", "Network", "OpenGL", "Concurrent", "Qml", "QmlModels", "QmlMeta", "QmlWorkerScript",
+         "Quick", "QuickShapes", "Quick3DUtils", "Quick3DRuntimeRender", "Quick3D", "Multimedia",
+         "Widgets", "QuickWidgets"]
+new = ("self.modules = sorted(dict.fromkeys(modls), key=lambda m: _WWC_ORDER.index(m) "
+       "if m in _WWC_ORDER else len(_WWC_ORDER))")
+if "_WWC_ORDER" in s:
+    print("already patched")
+elif old in s and "class AndroidConfig" in s:
+    s = s.replace(old, new).replace("class AndroidConfig", f"_WWC_ORDER = {order!r}\n\n\nclass AndroidConfig", 1)
+    p.write_text(s)
+    print("patched", p)
+else:
+    raise SystemExit("::error::could not patch the module order in " + str(p))
+PY
+
 echo "== Android SDK and NDK"
 if [ ! -d "$SDK/platform-tools" ] || ! ls -d "$CACHE"/android-ndk/android-ndk-r* >/dev/null 2>&1; then
   rm -rf /tmp/pyside-setup
@@ -55,6 +80,7 @@ pyside6-android-deploy -f -v --keep-deployment-files \
   --extra-ignore-dirs tests,build_assets,chess,github
 
 echo "== Generated build settings"
+grep -o -- "--qt-libs=[^ ]*" deployment/buildozer.spec buildozer.spec 2>/dev/null | head -1 || true
 cat pysidedeploy.spec || true
 for f in buildozer.spec deployment/buildozer.spec; do
   [ -f "$f" ] && grep -E "^(requirements|android\.|p4a\.|source\.)" "$f" || true

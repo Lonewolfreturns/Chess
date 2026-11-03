@@ -29,9 +29,8 @@ qml_files =
 
 excluded_qml_plugins =
 
-# Qt libraries, in the order Android loads them. Core MUST come first: other Qt libraries need it
-# to be set up when they start (if the deploy tool picks the order itself it can put Quick before
-# Core, and the app crashes on launch). Each one comes after the libraries it depends on.
+# Qt libraries used. Android must load Core first; the deploy tool ignores the order given here
+# (it re-detects the list), so github/scripts/build_apk.sh patches the tool to always put Core first.
 modules = Core,Gui,Network,OpenGL,Concurrent,Qml,Quick,Quick3D,Multimedia,Widgets,QuickWidgets
 
 plugins =
@@ -43,7 +42,9 @@ wheel_pyside =
 
 wheel_shiboken =
 
-plugins =
+# Qt plugins copied into the app: the Android window plugin and Android's own media player for
+# sound and music (the FFmpeg one needs libraries Qt's loader can't find on Android)
+plugins = platforms_qtforandroid,multimedia_androidmediaplugin
 
 [buildozer]
 
@@ -59,7 +60,8 @@ ndk_path =
 
 sdk_path =
 
-local_libs =
+# Plugin libraries loaded when the app starts (no FFmpeg: see [android] plugins above)
+local_libs = plugins_platforms_qtforandroid,plugins_multimedia_androidmediaplugin
 
 # aarch64 = phones; x86_64 = the Android emulator
 arch =
