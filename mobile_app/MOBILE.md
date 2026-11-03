@@ -13,8 +13,9 @@ The game runs on Android (and, later, iPhone) from the same code as the Windows 
 The app isn't from the Play Store, so Google Play Protect may show a warning. Choose
 *Install anyway*. This is normal for apps you build yourself.
 
-A new APK is built automatically every time you push to the `mobile-app` branch. You can also start
-a build by hand: **Actions → Android build → Run workflow**.
+A new APK is built automatically every time you push a change inside `mobile_app/` to `main`. You can
+also start a build by hand: **Actions → Android build → Run workflow**. The build settings live in
+`.github/workflows/android.yml` at the top of the repository (a copy is kept in `mobile_app/github/`).
 
 ## What's different on a phone
 
@@ -47,25 +48,17 @@ The preview keeps its own settings, separate from your normal desktop settings.
 
 ## Building the APK yourself (instead of GitHub)
 
-Building needs Linux or macOS. On Windows, use WSL (Ubuntu). From this folder:
+Building needs Linux or macOS. On Windows, use WSL (Ubuntu). From the `mobile_app` folder:
 
 ```
 sudo apt install -y build-essential git zip unzip autoconf automake libtool libtool-bin libltdl-dev \
-    pkg-config cmake lld zlib1g-dev libncurses-dev libffi-dev libssl-dev openjdk-17-jdk
+    pkg-config cmake lld zlib1g-dev libncurses-dev libffi-dev libssl-dev openjdk-17-jdk python3.11-venv
 python3.11 -m venv ~/wwc-venv && source ~/wwc-venv/bin/activate      # keep the venv outside the project
-pip install "PySide6==6.12.0" jinja2 pkginfo tqdm "packaging==24.1" "buildozer==1.6.0" "cython==0.29.33"
-
-# Android SDK + NDK (one time, about 3 GB)
-git clone --depth 1 --branch 6.12.0 https://github.com/qtproject/pyside-pyside-setup.git ~/pyside-setup
-python ~/pyside-setup/tools/cross_compile_android/main.py --download-only --skip-update --auto-accept-license --plat-name aarch64
-
-# PySide6 for Android (phone = aarch64)
-#   https://download.qt.io/official_releases/QtForPython/pyside6/   pyside6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
-#   https://download.qt.io/official_releases/QtForPython/shiboken6/ shiboken6-6.12.0-...-android_aarch64.whl
-pyside6-android-deploy -f --wheel-pyside <pyside6 wheel> --wheel-shiboken <shiboken6 wheel>
+bash github/scripts/build_apk.sh aarch64
 ```
 
-The first build takes 20–40 minutes; later builds are much faster. The `.apk` appears in this folder.
+This is the same script GitHub runs. It downloads the Android SDK/NDK (about 3 GB, once) and the
+PySide6 Android wheels, then builds. The first build takes 20–40 minutes; the APK ends up in `apk_out/`.
 
 ## Publishing on the Google Play Store (later)
 

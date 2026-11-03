@@ -17,7 +17,7 @@ version: how to get the APK, the touch controls, and how it's built.
   ```
 - **Rebuild the .exe:** `python build_exe.py` (single file) or `python build_exe.py --onedir`.
 - **Phone layout on a PC:** `python main.py --mobile` (add `--phone 844x390` for landscape).
-- **Android app:** built automatically by GitHub Actions on the `mobile-app` branch. See [MOBILE.md](MOBILE.md).
+- **Android app:** built automatically by GitHub Actions (Actions tab → **Android build**). See [MOBILE.md](MOBILE.md).
 
 ## Features
 

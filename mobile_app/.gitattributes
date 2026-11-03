@@ -1,0 +1,2 @@
+# shell scripts run on Linux build machines: always keep Unix line endings
+*.sh text eol=lf
